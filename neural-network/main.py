@@ -23,7 +23,6 @@ class Activation_ReLU:
 
 layer1 = Layer_Dense(2, 5)
 activation1 = Activation_ReLU()
-
 layer1.forward(X)
 activation1.forward(layer1.output)
 plt.scatter(X[:,0], X[:,1], c=y, cmap="brg")
