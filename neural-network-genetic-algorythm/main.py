@@ -95,12 +95,11 @@ class Creature:
         this.yvel = 0
         this.max = 1
         this.senses = [0, 0, 0, 0]
-        this.score = 0
         this.energy = 5
         this.age = 0
         this.randomNetwork()
     def __str__(this):
-        return f"A {this.color} creature with a neural network with {len(this.network)+1} layers. The creature network has {this.network[0].inputs} inputs and {this.network[-1].neurons} outputs. Score: {this.score}. Energy: {this.energy}"
+        return f"A {this.color} creature with a neural network with {len(this.network)+1} layers. The creature network has {this.network[0].inputs} inputs and {this.network[-1].neurons} outputs. Energy: {this.energy}"
     def networkForward(this):
         inputs = this.senses
         for layer in this.network:
@@ -115,7 +114,6 @@ class Creature:
             pygame.draw.rect(screen, this.color, pygame.Rect(this.x, this.y, this.width, this.width))
         else:
             this.senses = [this.x, this.y, screen.get_width() - this.x, screen.get_height() - this.y]
-            this.score = math.sqrt(((this.x - screen.get_width()/2)*(this.x - screen.get_width()/2)) + ((this.y - screen.get_height()/2)*(this.y - screen.get_height()/2)))
             this.x += this.xvel
             this.y += this.yvel
             networkOutput = this.networkForward()
@@ -133,20 +131,27 @@ class Creature:
                 this.y = 0
             elif this.y + this.width > screen.get_height():
                 this.y = screen.get_height() - this.width
+            drawText(str(round(this.energy)), this.x, this.y+10, False, size=1)
             pygame.draw.rect(screen, this.color, pygame.Rect(this.x, this.y, this.width, this.width))
 
 
 class Button:
-    def __init__(this, x=100, y=100, w=100, h=100, c=(139, 139, 139), t="Button", onclick=next, border=True):
+    def __init__(this, x=100, y=100, w=100, h=100, c=(139, 139, 139), t="Button", onclick=next, border=True, center=False):
         this.x = x
         this.y = y
+        this.initialx = x
+        this.initialy = y
         this.w = w
         this.h = h
         this.c = c
         this.t = t
         this.o = onclick
         this.border = border
+        this.center = center
     def draw(this):
+        if this.center:
+            this.x = this.x - this.w/2
+            this.y = this.y - this.h/2
         pygame.draw.rect(screen, this.c, [this.x, this.y, this.w, this.h], 0)
         if this.border:
             pygame.draw.rect(screen, (0, 0, 0), [this.x-1, this.y-1, this.w+2, this.h+2], 1)
@@ -154,6 +159,8 @@ class Button:
         textX = this.x + ((this.w - text.get_width())/2)
         textY = this.y + ((this.h - text.get_height())/2)
         screen.blit(text, (textX, textY))
+        this.x = this.initialx
+        this.y = this.initialy
     def onclick(this, x, y):
         if this.x < x and this.y < y and this.x+this.w > x and this.y+this.h > y:
             this.o()
@@ -200,19 +207,8 @@ while running:
     # Render
     pygame.display.flip()
 
-def saveToFile():
-    saved = []
-    for creature in creatures:
-        network = []
-        for net in creature.network:
-            network
-        saved.append({"color": creature.color, "network": network})
-    with open("save.json", "w") as file:
-        json.dump(saved, file)
-
 highScorer = {"score": 0}
-energySource = Button(x=screen.get_width()/2-50, y=screen.get_height()/2-50, c=(255, 255, 255), t="Energy source")
-save = Button(x=screen.get_width()-110, y=screen.get_height()-50, c=(255, 255, 255), h=40, t="Save", onclick=saveToFile)
+energySource = Button(x=screen.get_width()/2, y=screen.get_height()/2, w=700, h=500, c=(255, 255, 255), t="Energy source", center=True)
 running = True
 while running:
     # Events
@@ -223,33 +219,32 @@ while running:
             mouse_presses = pygame.mouse.get_pressed()
             if mouse_presses[0]:
                 mouseXY = pygame.mouse.get_pos()
-                save.onclick(mouseXY[0], mouseXY[1])
             if mouse_presses[2] and mouse_presses[1]:
                 mouseXY = pygame.mouse.get_pos()
                 for creature in creatures:
                     creature.randomNetwork()
     screen.fill("white")
+    energySource.w -= 0.0001
+    energySource.h -= 0.0001
     energySource.draw()
-    save.draw()
-    creatures.sort(key = lambda x: x.score)
+    creatures.sort(key = lambda x: x.energy)
     if len(creatures) == 0:
         running = False
-    elif creatures[0].score > highScorer["score"]:
-        highScorer = {"desc": str(creatures[0]), "score": creatures[0].score, "creature": creatures[0]}
+    elif creatures[0].energy > highScorer["score"]:
+        highScorer = {"desc": str(creatures[0]), "score": creatures[0].energy, "creature": creatures[0]}
     # Render
     drawText(f"Population {len(creatures)}", screen.get_width()/2, 10)
     for creature in creatures[:]:
         creature.age -= 0.001
         if collision(creature.x, creature.y, creature.width, creature.width, energySource.x, energySource.y, energySource.w, energySource.h):
             creature.energy += 0.002
-        if creature.xvel > 0 or creature.yvel > 0:
-            creature.energy -= 0.001
+        creature.energy -= 0.001
         if creature.energy >= 15:
             network = creature.network
             for layer in network:
                 layer.weights += 0.02 * np.random.randn(layer.inputs, layer.neurons)
             creatures.append(Creature(creature.color, network))
-        if creature.energy <= 0:
+        elif creature.energy <= 0:
             creatures.remove(creature)
         if creature.age > 20:
             creatures.remove(creature)
@@ -257,7 +252,7 @@ while running:
     pygame.display.flip()
 
 
-if highScorer["score"] > 0 and len(creatures) == 0:
+if highScorer["score"] > 0:
     print(highScorer['desc'])
     exitScene = True
     bestCreature = highScorer["creature"]
