@@ -56,7 +56,7 @@ class Activation:
 
 running = True
 moniter = pygame.display.Info()
-screen = pygame.display.set_mode((moniter.current_w, moniter.current_h))
+screen = pygame.display.set_mode((moniter.current_w-50, moniter.current_h-100))
 pygame.display.set_caption("Genetic Algorithm")
 hugeText = pygame.font.SysFont(pygame.font.get_default_font(), 72)
 largeText = pygame.font.SysFont(pygame.font.get_default_font(), 54)
