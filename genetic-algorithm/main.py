@@ -4,7 +4,7 @@ import math
 import random
 import copy
 # from win11toast import toast
-
+year = 1
 pygame.init()
 
 
@@ -123,7 +123,7 @@ class Creature:
     this.randomNetwork()
 
   def __str__(this):
-    return f"A {this.color} creature with a neural network with {len(this.network)+1} layers. The creature network has {this.network[0].inputs} inputs and {this.network[-1].neurons} outputs. Energy: {this.energy}. Age: {this.age}"
+    return f"A {this.color} cell.  Neural network has {len(this.network)+1} layers,  {this.network[0].inputs} inputs and {this.network[-1].neurons} outputs. Energy: {this.energy}. Age: {this.age}. Current year: {year}"
 
   def networkForward(this):
     inputs = this.senses
@@ -269,7 +269,6 @@ energySource = Button(x=screen.get_width() / 2,
                       center=True)
 running = True
 paused = False
-year = 1
 popToasts = []
 ageToasts = []
 
