@@ -2,7 +2,8 @@ import numpy as np
 import pygame
 import math
 import random
-import json
+import copy
+from win11toast import toast
 
 pygame.init()
 
@@ -62,7 +63,8 @@ def addColors(color1, color2):
 def collision(x1, y1, w1, h1, x2, y2, w2, h2):
     if x2 > w1 + x1 or x1 > w2 + x2 or y2 > h1 + y1 or y1 > h2 + y2:
         return False
-    return True
+    else:
+        return True
 
 red = (255, 0, 0)
 green = (0, 255, 0)
@@ -99,7 +101,7 @@ class Creature:
         this.age = 0
         this.randomNetwork()
     def __str__(this):
-        return f"A {this.color} creature with a neural network with {len(this.network)+1} layers. The creature network has {this.network[0].inputs} inputs and {this.network[-1].neurons} outputs. Energy: {this.energy}"
+        return f"A {this.color} creature with a neural network with {len(this.network)+1} layers. The creature network has {this.network[0].inputs} inputs and {this.network[-1].neurons} outputs. Energy: {this.energy}. Age: {this.age}"
     def networkForward(this):
         inputs = this.senses
         for layer in this.network:
@@ -123,15 +125,7 @@ class Creature:
                 this.xvel = this.max * (this.xvel / abs(this.xvel))
             if abs(this.yvel) > this.max:
                 this.yvel = this.max * (this.yvel / abs(this.yvel))
-            if this.x < 0:
-                this.x = 0
-            elif this.x + this.width > screen.get_width():
-                this.x = screen.get_width() - this.width
-            if this.y < 0:
-                this.y = 0
-            elif this.y + this.width > screen.get_height():
-                this.y = screen.get_height() - this.width
-            drawText(str(round(this.energy)), this.x, this.y+10, False, size=1)
+            drawText(str(round(this.age)), this.x, this.y+10, False, size=1)
             pygame.draw.rect(screen, this.color, pygame.Rect(this.x, this.y, this.width, this.width))
 
 
@@ -148,10 +142,12 @@ class Button:
         this.o = onclick
         this.border = border
         this.center = center
+        this.rect = [this.x, this.y, this.w, this.h]
     def draw(this):
         if this.center:
             this.x = this.x - this.w/2
             this.y = this.y - this.h/2
+            this.rect = [this.x, this.y, this.w, this.h]
         pygame.draw.rect(screen, this.c, [this.x, this.y, this.w, this.h], 0)
         if this.border:
             pygame.draw.rect(screen, (0, 0, 0), [this.x-1, this.y-1, this.w+2, this.h+2], 1)
@@ -187,7 +183,7 @@ def drawText(text, x, y, center=True, color=(0,0,0), size=3):
 def stop():
     global running
     running = False
-    for i in range(20):
+    for i in range(500):
         creatures.append(Creature(randomColor(), [Layer(4, 5), Layer(5, 3), Layer(3, 2)]))
 start = Button(screen.get_width()/2-250, screen.get_height()/2-45, 500, 30, (255, 255, 255), "Start New", stop)
 load = Button(screen.get_width()/2-250, screen.get_height()/2-45, 500, 30, (255, 255, 255), "Start New", stop)
@@ -210,46 +206,85 @@ while running:
 highScorer = {"score": 0}
 energySource = Button(x=screen.get_width()/2, y=screen.get_height()/2, w=700, h=500, c=(255, 255, 255), t="Energy source", center=True)
 running = True
+paused = False
+year = 1
+popToasts = []
+ageToasts = []
+
+
 while running:
     # Events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                paused = not paused
         if event.type == pygame.MOUSEBUTTONDOWN:
             mouse_presses = pygame.mouse.get_pressed()
-            if mouse_presses[0]:
+            if mouse_presses[0] and paused == True:
                 mouseXY = pygame.mouse.get_pos()
+                for creature in creatures:
+                    if collision(creature.x, creature.y, creature.width, creature.width, mouseXY[0], mouseXY[1], 1, 1):
+                        print(creature)
             if mouse_presses[2] and mouse_presses[1]:
                 mouseXY = pygame.mouse.get_pos()
                 for creature in creatures:
                     creature.randomNetwork()
-    screen.fill("white")
-    energySource.w -= 0.0001
-    energySource.h -= 0.0001
-    energySource.draw()
-    creatures.sort(key = lambda x: x.energy)
-    if len(creatures) == 0:
-        running = False
-    elif creatures[0].energy > highScorer["score"]:
-        highScorer = {"desc": str(creatures[0]), "score": creatures[0].energy, "creature": creatures[0]}
-    # Render
-    drawText(f"Population {len(creatures)}", screen.get_width()/2, 10)
-    for creature in creatures[:]:
-        creature.age -= 0.001
-        if collision(creature.x, creature.y, creature.width, creature.width, energySource.x, energySource.y, energySource.w, energySource.h):
-            creature.energy += 0.002
-        creature.energy -= 0.001
-        if creature.energy >= 15:
-            network = creature.network
-            for layer in network:
-                layer.weights += 0.02 * np.random.randn(layer.inputs, layer.neurons)
-            creatures.append(Creature(creature.color, network))
-        elif creature.energy <= 0:
-            creatures.remove(creature)
-        if creature.age > 20:
-            creatures.remove(creature)
-        creature.draw()
-    pygame.display.flip()
+    if paused == False:
+        screen.fill("white")
+        if energySource.w > 50:
+            energySource.w -= 0.001
+        if energySource.h > 50:
+            energySource.h -= 0.001
+        year += 0.001
+        energySource.draw()
+        creatures.sort(key = lambda x: x.energy, reverse=True)
+        if len(creatures) == 0:
+            running = False
+        elif creatures[0].energy > highScorer["score"]:
+            highScorer = {"desc": str(creatures[0]), "score": creatures[0].energy, "creature": creatures[0]}
+        # Render
+        drawText(f"Population {len(creatures)}  Year: {round(year)}", screen.get_width()/2, 10)
+        for creature in creatures[:]:
+            if creature.x < creature.width*2:
+                creature.x = creature.width*2
+                creature.energy -= 0.01
+            elif creature.x + (creature.width*2) > screen.get_width():
+                creature.x = screen.get_width() - creature.width*2
+                creature.energy -= 0.01
+            if creature.y < creature.width*2:
+                creature.y = creature.width*2
+                creature.energy -= 0.01
+            elif creature.y + (creature.width*2) > screen.get_height():
+                creature.y = screen.get_height() - creature.width*2
+                creature.energy -= 0.01
+            creature.age += 0.001
+            colided = collision(creature.x, creature.y, creature.width, creature.width, energySource.rect[0], energySource.rect[1], energySource.rect[2], energySource.rect[3])
+            if colided:
+                creature.energy += 0.006
+            creature.energy -= 0.001
+            if creature.energy >= 10:
+                network = copy.deepcopy(creature.network)
+                creature.energy = 5
+                for layer in network:
+                    layer.weights += 0.01 * np.random.randn(layer.inputs, layer.neurons)
+                creatures.append(Creature(creature.color, network))
+                creatures[-1].x = creature.x
+                creatures[-1].y = creature.y
+            elif creature.energy <= 0.0:
+                creatures.remove(creature)
+            if creature.age > 80.0:
+                creatures.remove(creature)
+            creature.draw()
+        if len(creatures) % 1000 == 0 and len(creatures) not in popToasts:
+            toast(f"Population reached {len(creatures)}")
+            popToasts.append(len(creatures))
+        if round(year) % 500 == 0 and round(year) not in ageToasts:
+            toast(f"World age has reached {round(year)}")
+            ageToasts.append(round(year))
+        pygame.display.flip()
+
 
 
 if highScorer["score"] > 0:
