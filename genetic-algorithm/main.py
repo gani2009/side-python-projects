@@ -164,7 +164,6 @@ energySource = Button(x=screen.get_width() / 2,
                       c=(255, 255, 255),
                       t="Energy source",
                       center=True)
-
 class Creature:
 
   def __init__(this, color, network):
@@ -202,10 +201,10 @@ class Creature:
       pygame.draw.rect(screen, this.color,
                        pygame.Rect(this.x, this.y, this.width, this.width))
     else:
-      if this.age > 20:
-        this.width = this.age/2
-        this.energyConsumption = this.age/2 * 0.0006
-        this.energyUsage = this.age/2 * 0.0001
+      if this.age > 30:
+        this.width = this.age/3
+        this.energyConsumption = this.age/3 * 0.0006
+        this.energyUsage = this.age/3 * 0.0001
       this.senses = [
         this.x, this.y,
         energySource.x, energySource.y
@@ -337,36 +336,36 @@ while running:
     for creature in creatures[:]:
       if creature.x < creature.width * 2 and creature in creatures:
         creature.x = creature.width * 2
-        if year < 10 or year > 100:
+        if year < 10 or year > 50:
           creatures.remove(creature)
         else:
           creature.energy -= 0.04
       elif creature.x + (creature.width * 2) > screen.get_width() and creature in creatures:
         creature.x = screen.get_width() - creature.width * 2
-        if year < 10 or year > 100:
+        if year < 10 or year > 50:
           creatures.remove(creature)
         else:
           creature.energy -= 0.04
       if creature.y < creature.width * 2 and creature in creatures:
         creature.y = creature.width * 2
-        if year < 10 or year > 100:
+        if year < 10 or year > 50:
           creatures.remove(creature)
         else:
           creature.energy -= 0.04
       elif creature.y + (creature.width * 2) > screen.get_height() and creature in creatures:
         creature.y = screen.get_height() - creature.width * 2
-        if year < 10 or year > 100:
+        if year < 10 or year > 50:
           creatures.remove(creature)
         else:
           creature.energy -= 0.04
-      if len(creatures) < 50 and creature.age < 10:
-        for layer in creature.network:
-          layer.weights += 0.0001 * np.random.randn(layer.inputs, layer.neurons)
       creature.age += 0.001
       colided = collision(creature.x, creature.y, creature.width,
                           creature.width, energySource.rect[0],
                           energySource.rect[1], energySource.rect[2],
                           energySource.rect[3])
+      if len(creatures) < 50 and creature.age < 10 and not colided:
+        for layer in creature.network:
+          layer.weights += 0.0001 * np.random.randn(layer.inputs, layer.neurons)
       if colided:
         creature.energy += creature.energyConsumption
       creature.energy -= creature.energyUsage
