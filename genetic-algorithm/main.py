@@ -3,8 +3,13 @@ import pygame
 import math
 import random
 import copy
+import datetime
+import os
+import sys
 # from win11toast import toast
 year = 1
+startNum = 1000
+forever = True
 pygame.init()
 
 
@@ -56,7 +61,7 @@ class Activation:
 
 running = True
 moniter = pygame.display.Info()
-screen = pygame.display.set_mode((moniter.current_w-50, moniter.current_h-100))
+screen = pygame.display.set_mode((moniter.current_w-50, moniter.current_h-200))
 pygame.display.set_caption("Genetic Algorithm")
 hugeText = pygame.font.SysFont(pygame.font.get_default_font(), 72)
 largeText = pygame.font.SysFont(pygame.font.get_default_font(), 54)
@@ -106,59 +111,6 @@ def next():
 creatures = []
 
 
-class Creature:
-
-  def __init__(this, color, network):
-    this.color = color
-    this.network = network
-    this.x = round(random.random() * screen.get_width())
-    this.y = round(random.random() * screen.get_height())
-    this.width = 10
-    this.xvel = 0
-    this.yvel = 0
-    this.max = 1
-    this.senses = [0, 0, 0, 0]
-    this.energy = 5
-    this.age = 0
-    this.randomNetwork()
-
-  def __str__(this):
-    return f"A {this.color} cell.  Neural network has {len(this.network)+1} layers,  {this.network[0].inputs} inputs and {this.network[-1].neurons} outputs. Energy: {this.energy}. Age: {this.age}. Current year: {year}"
-
-  def networkForward(this):
-    inputs = this.senses
-    for layer in this.network:
-      layer.forward(inputs)
-      inputs = layer.output
-    return inputs
-
-  def randomNetwork(this):
-    for layer in this.network:
-      layer.resetWeights()
-
-  def draw(this, simple=False):
-    if simple:
-      pygame.draw.rect(screen, this.color,
-                       pygame.Rect(this.x, this.y, this.width, this.width))
-    else:
-      this.senses = [
-        this.x, this.y,
-        screen.get_width() - this.x,
-        screen.get_height() - this.y
-      ]
-      this.x += this.xvel
-      this.y += this.yvel
-      networkOutput = this.networkForward()
-      this.xvel += networkOutput[0][0]
-      this.yvel += networkOutput[0][1]
-      if abs(this.xvel) > this.max:
-        this.xvel = this.max * (this.xvel / abs(this.xvel))
-      if abs(this.yvel) > this.max:
-        this.yvel = this.max * (this.yvel / abs(this.yvel))
-      pygame.draw.rect(screen, this.color,
-                       pygame.Rect(this.x, this.y, this.width, this.width))
-
-
 class Button:
 
   def __init__(this,
@@ -205,6 +157,72 @@ class Button:
       this.o()
 
 
+energySource = Button(x=screen.get_width() / 2,
+                      y=screen.get_height() / 2,
+                      w=screen.get_width()/1.5,
+                      h=screen.get_height()/1.5,
+                      c=(255, 255, 255),
+                      t="Energy source",
+                      center=True)
+
+class Creature:
+
+  def __init__(this, color, network):
+    this.color = color
+    this.network = network
+    this.x = round(random.random() * screen.get_width())
+    this.y = round(random.random() * screen.get_height())
+    this.width = 10
+    this.xvel = 0
+    this.yvel = 0
+    this.max = 1
+    this.senses = [0, 0, 0, 0]
+    this.energy = 5
+    this.age = 0
+    this.energyConsumption = 0.006
+    this.energyUsage = 0.001
+    this.randomNetwork()
+
+  def __str__(this):
+    return f"A {this.color} cell. Neural network has {len(this.network)+1} layers, {this.network[0].inputs} inputs and {this.network[-1].neurons} outputs. Energy: {round(this.energy)}(Usage: {round(this.energyUsage)};Consumption: {round(this.energyConsumption)}). Age: {round(this.age)}. Current year: {round(year)}"
+
+  def networkForward(this):
+    inputs = this.senses
+    for layer in this.network:
+      layer.forward(inputs)
+      inputs = layer.output
+    return inputs
+
+  def randomNetwork(this):
+    for layer in this.network:
+      layer.resetWeights()
+
+  def draw(this, simple=False):
+    if simple:
+      pygame.draw.rect(screen, this.color,
+                       pygame.Rect(this.x, this.y, this.width, this.width))
+    else:
+      if this.age > 20:
+        this.width = this.age/2
+        this.energyConsumption = this.age/2 * 0.0006
+        this.energyUsage = this.age/2 * 0.0001
+      this.senses = [
+        this.x, this.y,
+        energySource.x, energySource.y
+      ]
+      this.x += this.xvel
+      this.y += this.yvel
+      networkOutput = this.networkForward()
+      this.xvel += networkOutput[0][0]*2
+      this.yvel += networkOutput[0][1]*2
+      if abs(this.xvel) > this.max:
+        this.xvel = this.max * (this.xvel / abs(this.xvel))
+      if abs(this.yvel) > this.max:
+        this.yvel = this.max * (this.yvel / abs(this.yvel))
+      pygame.draw.rect(screen, this.color,
+                       pygame.Rect(this.x, this.y, this.width, this.width))
+
+
 def drawText(text, x, y, center=True, color=(0, 0, 0), size=3):
   if size == 1:
     textT = smallText.render(text, True, color)
@@ -227,20 +245,18 @@ def drawText(text, x, y, center=True, color=(0, 0, 0), size=3):
 def stop():
   global running
   running = False
-  for i in range(200):
-    creatures.append(
-      Creature(
-        randomColor(),
-        [Layer(4, 5), Layer(5, 3), Layer(3, 2)]))
 
-
-start = Button(screen.get_width() / 2 - 250,
-               screen.get_height() / 2 - 45, 500, 30, (255, 255, 255),
-               "Start New", stop)
-load = Button(screen.get_width() / 2 - 250,
-              screen.get_height() / 2 - 45, 500, 30, (255, 255, 255),
-              "Start New", stop)
-while running:
+start = Button(screen.get_width() / 2,
+               screen.get_height() / 2, 500, 30, (255, 255, 255),
+               "Start New", stop, center=True)
+while running and forever == False:
+  screen.fill("white")
+  drawText("Genetic Algorithm",
+           screen.get_width() / 2,
+           screen.get_height() / 3,
+           size=4)
+  start.draw()
+  # Render
   # Events
   for event in pygame.event.get():
     if event.type == pygame.QUIT:
@@ -250,50 +266,57 @@ while running:
       if mouse_presses[0]:
         mouseXY = pygame.mouse.get_pos()
         start.onclick(mouseXY[0], mouseXY[1])
-  screen.fill("white")
-  drawText("Genetic Algorithm",
-           screen.get_width() / 2,
-           screen.get_height() / 3,
-           size=4)
-  start.draw()
-  # Render
   pygame.display.flip()
 
 highScorer = {"score": 0}
-energySource = Button(x=screen.get_width() / 2,
-                      y=screen.get_height() / 2,
-                      w=screen.get_width()/1.5,
-                      h=screen.get_height()/1.5,
-                      c=(255, 255, 255),
-                      t="Energy source",
-                      center=True)
+screen.fill("white")
+drawText("Loading...", screen.get_width()/2, screen.get_height()/2)
+for i in range(startNum):
+  creatures.append(Creature(randomColor(),[Layer(4, 5), Layer(5, 3), Layer(3, 2)]))
 running = True
 paused = False
-popToasts = []
-ageToasts = []
-
+clock = pygame.time.Clock()
+startTime = datetime.datetime.now()
+def pauseDef():
+  global paused
+  paused = not paused
+pause = Button(10, 10, 200, 30, (255, 255, 255), "Pause/Unpause", pauseDef)
+def exitDef():
+  global running
+  running = False
+exitBut = Button(10, 40, 200, 30, (255, 255, 255), "Exit", exitDef)
+print(startTime)
 while running:
+  clock.tick(300)
   # Events
   for event in pygame.event.get():
     if event.type == pygame.QUIT:
       running = False
+      forever = False
     if event.type == pygame.KEYDOWN:
       if event.key == pygame.K_SPACE:
         paused = not paused
     if event.type == pygame.MOUSEBUTTONDOWN:
       mouse_presses = pygame.mouse.get_pressed()
-      if mouse_presses[0] and paused == True:
+      if mouse_presses[0]:
         mouseXY = pygame.mouse.get_pos()
+        pause.onclick(mouseXY[0], mouseXY[1])
+        exitBut.onclick(mouseXY[0], mouseXY[1])
         for creature in creatures:
           if collision(creature.x, creature.y, creature.width, creature.width,
                        mouseXY[0], mouseXY[1], 1, 1):
             print(creature)
       if mouse_presses[2] and mouse_presses[1]:
         mouseXY = pygame.mouse.get_pos()
-        for creature in creatures:
-          creature.randomNetwork()
+        energySource.x = mouseXY[0]
+        energySource.y = mouseXY[1]
+        energySource.initialx = mouseXY[0]
+        energySource.initialy = mouseXY[1]
+  # Render
   if paused == False:
     screen.fill("white")
+    pause.draw()
+    exitBut.draw()
     if energySource.w > 50:
       energySource.w -= 0.001
     if energySource.h > 50:
@@ -309,8 +332,7 @@ while running:
         "score": creatures[0].energy,
         "creature": creatures[0]
       }
-    # Render
-    drawText(f"Population {len(creatures)}  Year: {round(year)}",
+    drawText(f"Population {len(creatures)} | Year: {round(year)} | FPS {round(clock.get_fps())} frames per second",
              screen.get_width() / 2, 10)
     for creature in creatures[:]:
       if creature.x < creature.width * 2 and creature in creatures:
@@ -318,35 +340,36 @@ while running:
         if year < 10 or year > 100:
           creatures.remove(creature)
         else:
-          creature.energy -= 0.01
-      elif creature.x + (creature.width *
-                         2) > screen.get_width() and creature in creatures:
+          creature.energy -= 0.04
+      elif creature.x + (creature.width * 2) > screen.get_width() and creature in creatures:
         creature.x = screen.get_width() - creature.width * 2
         if year < 10 or year > 100:
           creatures.remove(creature)
         else:
-          creature.energy -= 0.01
+          creature.energy -= 0.04
       if creature.y < creature.width * 2 and creature in creatures:
         creature.y = creature.width * 2
         if year < 10 or year > 100:
           creatures.remove(creature)
         else:
-          creature.energy -= 0.01
-      elif creature.y + (creature.width *
-                         2) > screen.get_height() and creature in creatures:
+          creature.energy -= 0.04
+      elif creature.y + (creature.width * 2) > screen.get_height() and creature in creatures:
         creature.y = screen.get_height() - creature.width * 2
         if year < 10 or year > 100:
           creatures.remove(creature)
         else:
-          creature.energy -= 0.01
+          creature.energy -= 0.04
+      if len(creatures) < 50 and creature.age < 10:
+        for layer in creature.network:
+          layer.weights += 0.0001 * np.random.randn(layer.inputs, layer.neurons)
       creature.age += 0.001
       colided = collision(creature.x, creature.y, creature.width,
                           creature.width, energySource.rect[0],
                           energySource.rect[1], energySource.rect[2],
                           energySource.rect[3])
       if colided:
-        creature.energy += 0.006
-      creature.energy -= 0.001
+        creature.energy += creature.energyConsumption
+      creature.energy -= creature.energyUsage
       if creature.energy >= 10:
         network = copy.deepcopy(creature.network)
         creature.energy = 5
@@ -357,17 +380,15 @@ while running:
         creatures[-1].y = creature.y
       elif creature.energy <= 0.0:
         creatures.remove(creature)
-      if creature.age > 80.0:
+      if creature.age > 160.0:
         creatures.remove(creature)
       creature.draw()
-    if len(creatures) % 1000 == 0 and len(creatures) not in popToasts:
-      # toast(f"Population reached {len(creatures)}")
-      popToasts.append(len(creatures))
-    if round(year) % 500 == 0 and round(year) not in ageToasts:
-      # toast(f"World age has reached {round(year)}")
-      ageToasts.append(round(year))
     pygame.display.flip()
 
+end = datetime.datetime.now()
+difference = end - startTime
+seconds_in_day = 24 * 60 * 60
+minutesSeconds = divmod(difference.days * seconds_in_day + difference.seconds, 60)
 if highScorer["score"] > 0:
   print(highScorer['desc'])
   exitScene = True
@@ -375,7 +396,7 @@ if highScorer["score"] > 0:
   bestCreature.width = 100
   bestCreature.x = 50
   bestCreature.y = 50
-  while exitScene:
+  while exitScene and forever == False:
     # Events
     for event in pygame.event.get():
       if event.type == pygame.QUIT:
@@ -384,7 +405,7 @@ if highScorer["score"] > 0:
     # Render
     bestCreature.draw(True)
     drawText(str(bestCreature), screen.get_width() / 2, 10, True, (0, 0, 0), 1)
-
+    drawText(f"Simulation time: {minutesSeconds[0]} minutes, {minutesSeconds[1]} seconds.", screen.get_width() / 2, 25, True, (0, 0, 0), 1)
     pygame.display.flip()
-print(popToasts)
-print(ageToasts)
+if forever:
+  os.execv(sys.executable, ['python'] + sys.argv)
